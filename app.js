@@ -113,14 +113,30 @@ async function salvar() {
   saveTimer = null;
   try {
     await Promise.all([
-      setDoc(refMes(mes), { valor, dias }),
-      setDoc(refConfig(), { valor, nome }),
+      setDoc(refMes(mes), { dias }),
+      setDoc(refConfig(), { nome }),
     ]);
     setStatus("Salvo");
   } catch (e) {
     console.error(e);
     setStatus("Erro ao salvar");
   }
+}
+
+// O valor hora fica só neste navegador (localStorage), nunca vai para o banco.
+function lerValor(m) {
+  try {
+    return Number(localStorage.getItem(`valor:${m}`) ?? localStorage.getItem("valor")) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function gravarValor(m, v) {
+  try {
+    localStorage.setItem(`valor:${m}`, v);
+    localStorage.setItem("valor", v);
+  } catch {}
 }
 
 let config = {};
@@ -137,12 +153,8 @@ async function carregarMes(novo) {
   mes = novo;
   setStatus("Carregando…");
   const snap = await getDoc(refMes(mes));
-  if (snap.exists()) {
-    ({ valor = 0, dias = {} } = snap.data());
-  } else {
-    valor = config.valor ?? 0;
-    dias = {};
-  }
+  dias = snap.exists() ? snap.data().dias ?? {} : {};
+  valor = lerValor(mes);
   $("mes").value = mes;
   $("valor").value = valor;
   render();
@@ -240,7 +252,7 @@ $("btn-login").addEventListener("click", async () => {
 $("btn-sair").addEventListener("click", () => signOut(auth));
 $("mes").addEventListener("change", (e) => e.target.value && carregarMes(e.target.value));
 $("nome").addEventListener("input", (e) => { nome = e.target.value; agendarSave(); });
-$("valor").addEventListener("input", (e) => { valor = Number(e.target.value) || 0; totais(); agendarSave(); });
+$("valor").addEventListener("input", (e) => { valor = Number(e.target.value) || 0; gravarValor(mes, valor); totais(); });
 $("btn-baixar").addEventListener("click", baixar);
 window.addEventListener("beforeunload", (e) => { if (saveTimer) e.preventDefault(); });
 
