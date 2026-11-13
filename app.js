@@ -208,12 +208,12 @@ async function baixar() {
   sheet = setCell(sheet, "D32", valor);
   // mantém as fórmulas e atualiza o valor em cache
   sheet = sheet
-    .replace(/(<f>SUM\(D6:D30\)<\/f><v>)[^<]*/, `$1${horas / 24}`)
-    .replace(/(<f>D32\*D31\*24<\/f><v>)[^<]*/, `$1${valor * horas}`);
+    .replace(/(<f[^>]*>SUM\(D6:D30\)<\/f><v>)[^<]*/, `$1${horas / 24}`)
+    .replace(/(<f[^>]*>D32\*D31\*24<\/f><v>)[^<]*/, `$1${valor * horas}`);
   zip.file("xl/worksheets/sheet1.xml", sheet);
 
   let wb = await zip.file("xl/workbook.xml").async("string");
-  wb = wb.replace(/(<sheet [^>]*name=")[^"]*"/, `$1${nomeMes}"`).replace("<calcPr/>", '<calcPr fullCalcOnLoad="1"/>');
+  wb = wb.replace(/(<sheet [^>]*name=")[^"]*"/, `$1${nomeMes}"`).replace(/<calcPr\b/, '<calcPr fullCalcOnLoad="1"');
   zip.file("xl/workbook.xml", wb);
 
   const blob = await zip.generateAsync({
