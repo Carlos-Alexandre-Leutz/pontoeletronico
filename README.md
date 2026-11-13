@@ -1,22 +1,11 @@
 # Ponto Eletrônico
 
-Lista os dias do mês, você escreve o que fez e baixa o `.xlsx` da MTP preenchido.
-Os dados ficam no Firebase (Firestore), então não se perdem ao limpar o histórico.
+Fiz esta página para mim e para as outras pessoas que trabalham na MTP criarem o relatório de horas mensal.
 
-## Configurar o Firebase (uma vez)
+## O problema
 
-1. https://console.firebase.google.com → **Adicionar projeto**.
-2. **Build → Authentication → Começar → Google** → ativar.
-   Em **Settings → Authorized domains**, confira que o domínio onde a página está publicada (ex.: `usuario.github.io`) está na lista; `localhost` já vem.
-3. **Build → Firestore Database → Criar banco** (modo produção).
-   Na aba **Regras**, cole o conteúdo de `firestore.rules` e publique.
-4. **Configurações do projeto → Seus apps → Web (`</>`)** → registre o app e copie o `firebaseConfig` para `firebase-config.js`.
+Todo mês era preciso montar a planilha de atividades e horas para enviar junto com a nota fiscal. Dava trabalho, era chato e tinha que ser refeito do zero a cada mês, na hora de fechar, tentando lembrar o que foi feito em cada dia.
 
-## Uso
+## Como resolve
 
-- Escolha o mês, ajuste o valor hora e escreva a descrição de cada dia (padrão 8h em dias úteis, 0h em fins de semana).
-- `↑` copia a descrição do dia anterior.
-- Tudo salva sozinho. No fim do mês, **Baixar .xlsx**.
-- `template.xlsx` é o modelo; se a MTP mudar o layout, troque o arquivo (as células usadas estão em `app.js`).
-
-Para testar local: `python3 -m http.server` na pasta e abrir `http://localhost:8000`.
+Ao longo do mês, você só anota o que foi fazendo em cada dia. Não precisa fazer mais nada. No fim do mês, um botão gera o arquivo da MTP já preenchido, pronto para enviar.
