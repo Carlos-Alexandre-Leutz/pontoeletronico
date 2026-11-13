@@ -9,3 +9,7 @@ Todo mês era preciso montar a planilha de atividades e horas para enviar junto 
 ## Como resolve
 
 Ao longo do mês, você só anota o que foi fazendo em cada dia. Não precisa fazer mais nada. No fim do mês, um botão gera o arquivo da MTP já preenchido, pronto para enviar.
+
+## Privacidade
+
+O valor hora fica salvo só no navegador de cada pessoa (local storage) e nunca vai para o banco. Assim ninguém sabe quanto o outro ganha.
