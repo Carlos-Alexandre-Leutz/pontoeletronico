@@ -193,8 +193,9 @@ async function baixar() {
 
   const nomeMes = MESES[m - 1];
   const nomeCompleto = nome.trim().replace(/\s+/g, " ");
-  sheet = setCell(sheet, "F5", `Título do E-mail: MTP - Atividades: ${nomeMes[0].toUpperCase()}${nomeMes.slice(1)} ${a} ${nomeCompleto}`);
-  sheet = setCell(sheet, "F6", `Exemplo: MTP - Atividades: Novembro 2024 ${nomeCompleto}`);
+  const assunto = `MTP - Atividades: ${nomeMes[0].toUpperCase()}${nomeMes.slice(1)} ${a} ${nomeCompleto}`;
+  sheet = setCell(sheet, "F5", `Título do E-mail: ${assunto}`);
+  sheet = setCell(sheet, "F6", `Exemplo: ${assunto}`);
 
   for (let r = PRIMEIRA_LINHA; r <= ULTIMA_LINHA; r++) {
     const l = linhas[r - PRIMEIRA_LINHA];
