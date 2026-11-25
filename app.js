@@ -570,7 +570,7 @@ async function atualizarSino() {
 
 // ---------- contribuição por Pix ----------
 
-$("btn-pix").addEventListener("click", () => $("pix").showModal());
+document.querySelectorAll(".abrir-pix").forEach((b) => b.addEventListener("click", () => $("pix").showModal()));
 $("btn-fechar-pix").addEventListener("click", () => $("pix").close());
 $("pix").addEventListener("click", (e) => { if (e.target === $("pix")) $("pix").close(); });
 
