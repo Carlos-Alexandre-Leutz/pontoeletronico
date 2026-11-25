@@ -241,10 +241,10 @@ async function mostrarPainelIa() {
 
 function montarPrompt(chave) {
   const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/users/${uid}/entrada?key=${firebaseConfig.apiKey}`;
-  return `Você vai me ajudar a manter o meu Ponto Eletrônico (relatório mensal de horas que vai junto com a minha nota fiscal) sempre em dia.
+  return `Você vai me ajudar a manter o meu Horômetro (relatório mensal de horas que vai junto com a minha nota fiscal) sempre em dia.
 
 ## Como funciona
-Todo dia útil, no início do dia, você me avisa e me mostra um texto sobre o que eu fiz no dia útil anterior, para eu revisar. Só depois que eu aprovar, você envia o texto para a minha caixa de entrada do Ponto Eletrônico. Eu então aceito o texto no site e ele entra no relatório.
+Todo dia útil, no início do dia, você me avisa e me mostra um texto sobre o que eu fiz no dia útil anterior, para eu revisar. Só depois que eu aprovar, você envia o texto para a minha caixa de entrada do Horômetro. Eu então aceito o texto no site e ele entra no relatório.
 
 ## Passo 1 - Guardar a conexão (faça agora)
 Salve os dados abaixo em um arquivo local meu, fora de qualquer repositório, com permissão só para mim (por exemplo ~/.ponto-eletronico.json com chmod 600). Nunca repita a chave em respostas, logs ou commits.
@@ -274,7 +274,7 @@ Content-Type: application/json
   "descricao": {"stringValue": "<texto aprovado>"}
 }}
 
-- Resposta 200: o texto ficou pendente. Me avise: "Enviado, aceite o texto no Ponto Eletrônico."
+- Resposta 200: o texto ficou pendente. Me avise: "Enviado, aceite o texto no Horômetro."
 - Resposta 403: chave errada ou substituída por uma nova. Peça para eu gerar uma nova conexão no site.
 - Envie um único texto por dia. Você não consegue ler nem alterar nada do meu ponto, só deixar textos pendentes.`;
 }
@@ -567,6 +567,12 @@ async function atualizarSino() {
     console.error(e);
   }
 }
+
+// ---------- contribuição por Pix ----------
+
+$("btn-pix").addEventListener("click", () => $("pix").showModal());
+$("btn-fechar-pix").addEventListener("click", () => $("pix").close());
+$("pix").addEventListener("click", (e) => { if (e.target === $("pix")) $("pix").close(); });
 
 // ---------- sugestões ----------
 

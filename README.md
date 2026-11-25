@@ -1,4 +1,4 @@
-# Ponto Eletrônico
+# Horômetro
 
 Fiz esta página para mim e para as outras pessoas que trabalham na MTP criarem o relatório de horas mensal.
 
