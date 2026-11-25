@@ -1,0 +1,11 @@
+name = "ponto-chat"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Só este site pode chamar o Worker (CORS).
+ALLOWED_ORIGIN = "https://carlos-alexandre-leutz.github.io"
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# A chave do Gemini NÃO fica aqui. Cadastre com:
+#   npx wrangler secret put GEMINI_API_KEY
