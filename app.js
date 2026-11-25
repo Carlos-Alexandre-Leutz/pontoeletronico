@@ -301,6 +301,14 @@ function abrirPainelIa() {
   painel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function fecharPainelIa() {
+  $("painel-ia").classList.add("d-none");
+  $("ia-prompt").value = ""; // a chave não fica na página depois de fechar
+  $("ia-prompt-box").classList.add("d-none");
+  $("ia-confirma").classList.add("d-none");
+  mostrarErroIa("");
+}
+
 const dataValida = (a, m, d) => new Date(a, m - 1, d).getMonth() === m - 1 && new Date(a, m - 1, d).getDate() === d;
 
 async function descricaoAtual(data) {
@@ -489,6 +497,7 @@ $("valor").addEventListener("input", (e) => { valor = Number(e.target.value) || 
 $("btn-baixar").addEventListener("click", baixar);
 $("btn-ia").addEventListener("click", abrirPainelIa);
 $("btn-conectar").addEventListener("click", abrirPainelIa);
+$("btn-fechar-painel").addEventListener("click", fecharPainelIa);
 $("btn-fechar-aviso").addEventListener("click", () => {
   $("aviso-ia").classList.add("d-none");
   try { localStorage.setItem("avisoIaFechado", "1"); } catch {}
