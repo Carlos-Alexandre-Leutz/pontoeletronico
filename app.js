@@ -627,12 +627,17 @@ if (CHAT_URL) {
       }), 20000);
       const dados = await resp.json();
       if (!resp.ok) throw new Error(dados.erro || `erro ${resp.status}`);
-      espera.textContent = dados.resposta;
-      const copia = document.createElement("button");
-      copia.className = "btn btn-sm btn-link d-block p-0 mt-1";
-      copia.textContent = "Copiar";
-      copia.addEventListener("click", () => copiar(copia, dados.resposta));
-      espera.appendChild(copia);
+      // A IA marca a descrição pronta com <descricao>...</descricao>; só nesse caso aparece o "Copiar".
+      const marcada = /<descricao>([\s\S]*?)<\/descricao>/i.exec(dados.resposta);
+      espera.textContent = dados.resposta.replace(/<\/?descricao>/gi, "").trim();
+      if (marcada) {
+        const descricao = marcada[1].replace(/\s+/g, " ").trim();
+        const copia = document.createElement("button");
+        copia.className = "btn btn-sm btn-link d-block p-0 mt-1";
+        copia.textContent = "Copiar descrição";
+        copia.addEventListener("click", () => copiar(copia, descricao));
+        espera.appendChild(copia);
+      }
       historicoChat.push({ papel: "user", texto: pergunta }, { papel: "model", texto: dados.resposta });
     } catch (err) {
       registrarLog("chat", err);
