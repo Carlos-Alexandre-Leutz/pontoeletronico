@@ -1,8 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'tercmtcarlosl@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+      // O admin lista e apaga os dados de um usuário (tela admin.html).
+      allow read, delete: if isAdmin();
     }
 
     // Caixa de entrada: quem tem a chave da API consegue deixar um texto
@@ -20,6 +28,46 @@ service cloud.firestore {
         && request.resource.data.descricao.size() <= 2000
         && get(/databases/$(database)/documents/users/$(uid)/config/api).data.hash
              == hashing.sha256(request.resource.data.chave).toHexString().lower();
+    }
+
+    // Resumo de uso por usuário: só e-mail, nome, quais meses têm dados e o
+    // último acesso. Nunca o conteúdo do relatório.
+    match /usuarios/{uid} {
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['email', 'nome', 'meses', 'ultimoAcesso'])
+        && request.resource.data.keys().hasAll(['email', 'nome', 'meses', 'ultimoAcesso'])
+        && request.resource.data.email is string && request.resource.data.email.size() <= 200
+        && request.resource.data.nome is string && request.resource.data.nome.size() <= 200
+        && request.resource.data.meses is list && request.resource.data.meses.size() <= 240
+        && request.resource.data.ultimoAcesso is string && request.resource.data.ultimoAcesso.size() <= 40;
+      allow read: if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Erros do site: qualquer visitante pode registrar (com tamanhos limitados);
+    // só o admin lê e apaga.
+    match /logs/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['origem', 'mensagem', 'pagina', 'uid', 'em'])
+        && request.resource.data.keys().hasAll(['origem', 'mensagem', 'pagina', 'uid', 'em'])
+        && request.resource.data.origem is string && request.resource.data.origem.size() <= 60
+        && request.resource.data.mensagem is string && request.resource.data.mensagem.size() <= 500
+        && request.resource.data.pagina is string && request.resource.data.pagina.size() <= 200
+        && request.resource.data.uid is string && request.resource.data.uid.size() <= 128
+        && request.resource.data.em is string && request.resource.data.em.size() <= 40;
+      allow read, delete: if isAdmin();
+    }
+
+    // Sugestões de quem usa o site (precisa estar logado).
+    match /sugestoes/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'texto', 'em'])
+        && request.resource.data.keys().hasAll(['uid', 'email', 'texto', 'em'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email is string && request.resource.data.email.size() <= 200
+        && request.resource.data.texto is string
+        && request.resource.data.texto.size() > 0 && request.resource.data.texto.size() <= 1000
+        && request.resource.data.em is string && request.resource.data.em.size() <= 40;
+      allow read, delete: if isAdmin();
     }
   }
 }

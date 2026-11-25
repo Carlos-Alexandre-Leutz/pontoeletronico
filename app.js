@@ -1,8 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
 import { firebaseConfig } from "./firebase-config.js";
+import { iniciarLogs, ADMIN_EMAIL, contarNovos } from "./logs.js";
+import { CHAT_URL } from "./chat-config.js";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const DIAS_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -22,8 +24,12 @@ if (Object.values(firebaseConfig).some((v) => v === "COLE_AQUI")) {
 
 const auth = getAuth(initializeApp(firebaseConfig));
 const db = getFirestore();
+const registrarLog = iniciarLogs(db, () => uid);
+const falha = (origem) => (e) => { console.error(e); registrarLog(origem, e); };
 
 let uid = null;
+let email = "";
+let mesesComDados = new Set(); // meses com alguma descrição, só para o resumo de uso do admin
 let mes = null; // "YYYY-MM"
 let valor = 0;
 let nome = "";
@@ -32,6 +38,24 @@ let saveTimer = null;
 
 const refMes = (m) => doc(db, "users", uid, "meses", m);
 const refConfig = () => doc(db, "users", uid, "config", "geral");
+
+const temTexto = (d) => Object.values(d).some((x) => String(x?.d ?? "").trim());
+
+// Resumo de uso em usuarios/{uid}: e-mail, nome e meses com dados (nunca o conteúdo).
+function atualizarResumo() {
+  if (!uid) return;
+  setDoc(doc(db, "usuarios", uid), {
+    email,
+    nome: nome.slice(0, 200),
+    meses: [...mesesComDados].sort(),
+    ultimoAcesso: new Date().toISOString(),
+  }).catch(falha("resumo"));
+}
+
+async function carregarMesesComDados() {
+  const snap = await getDocs(collection(db, "users", uid, "meses"));
+  mesesComDados = new Set(snap.docs.filter((x) => temTexto(x.data().dias ?? {})).map((x) => x.id));
+}
 
 function setStatus(t) { $("status").textContent = t; }
 
@@ -133,9 +157,11 @@ async function salvar() {
       setDoc(refMes(mes), { dias }),
       setDoc(refConfig(), { nome }),
     ]);
+    mesesComDados[temTexto(dias) ? "add" : "delete"](mes);
+    atualizarResumo();
     setStatus("Salvo");
   } catch (e) {
-    console.error(e);
+    falha("salvar")(e);
     setStatus("Erro ao salvar");
   }
 }
@@ -336,6 +362,8 @@ async function aplicarPendente(it, texto, acrescentar) {
     const atual = outros[d] ?? {};
     outros[d] = { d: juntar(atual.d ?? ""), h: atual.h ?? (info.fds ? 0 : HORAS_PADRAO) };
     await setDoc(refMes(chaveMes), { dias: outros });
+    mesesComDados[temTexto(outros) ? "add" : "delete"](chaveMes);
+    atualizarResumo();
   }
   await removerPendente(it);
 }
@@ -514,5 +542,103 @@ onAuthStateChanged(auth, (user) => {
   $("login").classList.toggle("d-none", !!user);
   $("app").classList.toggle("d-none", !user);
   try { $("aviso-ia").classList.toggle("d-none", localStorage.getItem("avisoIaFechado") === "1"); } catch {}
-  if (user) carregarConfig().then(() => carregarMes(mes ?? mesAtual())).then(carregarPendentes).catch(console.error);
+  email = user?.email ?? "";
+  $("btn-admin").classList.toggle("d-none", !(user?.emailVerified && email === ADMIN_EMAIL));
+  if (user) {
+    carregarConfig()
+      .then(() => carregarMesesComDados())
+      .then(() => { atualizarResumo(); return carregarMes(mes ?? mesAtual()); })
+      .then(carregarPendentes)
+      .catch(falha("carregar"));
+    if (!$("btn-admin").classList.contains("d-none")) atualizarSino();
+  }
 });
+
+// ---------- admin: sino com novidades ----------
+
+async function atualizarSino() {
+  try {
+    const n = await contarNovos(db);
+    const total = n.logs + n.sugestoes;
+    $("sino-qtd").textContent = total > 99 ? "99+" : total;
+    $("sino-qtd").classList.toggle("d-none", !total);
+    $("btn-admin").title = `${n.logs} erro(s) e ${n.sugestoes} sugestão(ões) novos`;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ---------- sugestões ----------
+
+$("btn-sugestao").addEventListener("click", () => {
+  $("painel-sugestao").classList.toggle("d-none");
+  $("sug-msg").textContent = "";
+});
+$("btn-fechar-sugestao").addEventListener("click", () => $("painel-sugestao").classList.add("d-none"));
+$("btn-enviar-sugestao").addEventListener("click", async () => {
+  const texto = $("sug-texto").value.trim();
+  if (!texto) return;
+  const botao = $("btn-enviar-sugestao");
+  botao.disabled = true;
+  try {
+    await comTimeout(addDoc(collection(db, "sugestoes"), { uid, email, texto: texto.slice(0, 1000), em: new Date().toISOString() }), 10000);
+    $("sug-texto").value = "";
+    $("sug-msg").className = "small mt-2 text-success";
+    $("sug-msg").textContent = "Obrigado! Sua sugestão foi enviada.";
+  } catch (e) {
+    falha("sugestao")(e);
+    $("sug-msg").className = "small mt-2 text-danger";
+    $("sug-msg").textContent = "Não foi possível enviar. Tente de novo.";
+  } finally {
+    botao.disabled = false;
+  }
+});
+
+// ---------- chat de dúvidas ----------
+
+const historicoChat = [];
+function msgChat(papel, texto) {
+  const el = document.createElement("div");
+  el.className = `chat-msg ${papel}`;
+  el.textContent = texto;
+  $("chat-msgs").appendChild(el);
+  $("chat-msgs").scrollTop = $("chat-msgs").scrollHeight;
+  return el;
+}
+
+if (CHAT_URL) {
+  $("chat").classList.remove("d-none");
+  msgChat("bot", "Oi! Tiro dúvidas sobre o app e refino as suas descrições para você colar no dia. É só me dizer o que você fez que eu escrevo o texto para você.");
+  $("btn-chat").addEventListener("click", () => $("chat-janela").classList.toggle("d-none"));
+  $("btn-fechar-chat").addEventListener("click", () => $("chat-janela").classList.add("d-none"));
+  $("chat-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pergunta = $("chat-input").value.trim().slice(0, 500);
+    if (!pergunta) return;
+    $("chat-input").value = "";
+    msgChat("eu", pergunta);
+    const espera = msgChat("bot", "…");
+    $("chat-enviar").disabled = true;
+    try {
+      const resp = await comTimeout(fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pergunta, historico: historicoChat.slice(-6) }),
+      }), 20000);
+      const dados = await resp.json();
+      if (!resp.ok) throw new Error(dados.erro || `erro ${resp.status}`);
+      espera.textContent = dados.resposta;
+      const copia = document.createElement("button");
+      copia.className = "btn btn-sm btn-link d-block p-0 mt-1";
+      copia.textContent = "Copiar";
+      copia.addEventListener("click", () => copiar(copia, dados.resposta));
+      espera.appendChild(copia);
+      historicoChat.push({ papel: "user", texto: pergunta }, { papel: "model", texto: dados.resposta });
+    } catch (err) {
+      registrarLog("chat", err);
+      espera.textContent = "Não consegui responder agora. Tente de novo em instantes.";
+    } finally {
+      $("chat-enviar").disabled = false;
+    }
+  });
+}
