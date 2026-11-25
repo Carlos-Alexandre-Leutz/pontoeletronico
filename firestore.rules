@@ -4,5 +4,22 @@ service cloud.firestore {
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Caixa de entrada: quem tem a chave da API consegue deixar um texto
+    // pendente, sem login. Não lê nem altera nada; a página aplica depois,
+    // quando o dono abre o site.
+    match /users/{uid}/entrada/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['chave', 'data', 'descricao'])
+        && request.resource.data.keys().hasAll(['chave', 'data', 'descricao'])
+        && request.resource.data.chave is string
+        && request.resource.data.chave.size() == 64
+        && request.resource.data.data is string
+        && request.resource.data.data.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.descricao is string
+        && request.resource.data.descricao.size() > 0
+        && request.resource.data.descricao.size() <= 2000
+        && get(/databases/$(database)/documents/users/$(uid)/config/api).data.hash
+             == hashing.sha256(request.resource.data.chave).toHexString().lower();
+    }
   }
 }
