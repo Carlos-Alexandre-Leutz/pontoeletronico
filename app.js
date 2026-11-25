@@ -187,6 +187,7 @@ const refApi = () => doc(db, "users", uid, "config", "api");
 const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 
 async function sha256Hex(texto) {
+  if (!crypto.subtle) throw new Error("abra o site por HTTPS (ou localhost); este endereço bloqueia a criptografia do navegador");
   return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto))));
 }
 
@@ -202,8 +203,7 @@ async function copiar(botao, texto) {
 }
 
 async function mostrarPainelIa() {
-  $("ia-prompt-box").classList.add("d-none");
-  $("ia-prompt").value = "";
+  if ($("ia-prompt").value) return; // já há um prompt na tela e a chave não pode ser mostrada de novo
   const snap = await getDoc(refApi());
   const existe = snap.exists();
   $("ia-status").textContent = existe
@@ -253,15 +253,45 @@ Content-Type: application/json
 - Envie um único texto por dia. Você não consegue ler nem alterar nada do meu ponto, só deixar textos pendentes.`;
 }
 
+function mostrarErroIa(msg) {
+  $("ia-erro").textContent = msg;
+  $("ia-erro").classList.toggle("d-none", !msg);
+}
+
+const comTimeout = (promessa, ms) => Promise.race([
+  promessa,
+  new Promise((_, rej) => setTimeout(() => rej(new Error("o servidor não respondeu; confira a internet e se algum bloqueador de anúncios bloqueia o Firebase")), ms)),
+]);
+
+function pedirConexao() {
+  mostrarErroIa("");
+  if ($("btn-gerar-conexao").dataset.existe) $("ia-confirma").classList.remove("d-none");
+  else gerarConexao();
+}
+
 async function gerarConexao() {
-  if ($("btn-gerar-conexao").dataset.existe && !confirm("Gerar uma nova conexão? A atual deixa de funcionar na sua IA.")) return;
-  const chave = hex(crypto.getRandomValues(new Uint8Array(32)));
-  await setDoc(refApi(), { hash: await sha256Hex(chave), criadaEm: new Date().toISOString() });
-  $("ia-prompt").value = montarPrompt(chave);
-  $("ia-prompt-box").classList.remove("d-none");
-  $("ia-status").textContent = "Conexão gerada agora. Copie o prompt e cole na sua IA.";
-  $("btn-gerar-conexao").textContent = "Gerar nova conexão";
-  $("btn-gerar-conexao").dataset.existe = "1";
+  $("ia-confirma").classList.add("d-none");
+  mostrarErroIa("");
+  const botao = $("btn-gerar-conexao");
+  botao.disabled = true;
+  try {
+    const chave = hex(crypto.getRandomValues(new Uint8Array(32)));
+    await comTimeout(
+      sha256Hex(chave).then((hash) => setDoc(refApi(), { hash, criadaEm: new Date().toISOString() })),
+      10000,
+    );
+    $("ia-prompt").value = montarPrompt(chave);
+    $("ia-prompt-box").classList.remove("d-none");
+    $("ia-prompt-box").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    $("ia-status").textContent = "Conexão gerada agora. Copie o prompt e cole na sua IA.";
+    botao.textContent = "Gerar nova conexão";
+    botao.dataset.existe = "1";
+  } catch (e) {
+    console.error(e);
+    mostrarErroIa(`Não foi possível gerar a conexão: ${e.message}`);
+  } finally {
+    botao.disabled = false;
+  }
 }
 
 function abrirPainelIa() {
@@ -463,7 +493,9 @@ $("btn-fechar-aviso").addEventListener("click", () => {
   $("aviso-ia").classList.add("d-none");
   try { localStorage.setItem("avisoIaFechado", "1"); } catch {}
 });
-$("btn-gerar-conexao").addEventListener("click", () => gerarConexao().catch((e) => { console.error(e); alert("Não foi possível gerar a conexão."); }));
+$("btn-gerar-conexao").addEventListener("click", pedirConexao);
+$("btn-confirmar-conexao").addEventListener("click", gerarConexao);
+$("btn-cancelar-conexao").addEventListener("click", () => $("ia-confirma").classList.add("d-none"));
 $("btn-copiar-prompt").addEventListener("click", (e) => copiar(e.target, $("ia-prompt").value));
 document.addEventListener("visibilitychange", () => { if (!document.hidden && uid) carregarPendentes().catch(console.error); });
 window.addEventListener("beforeunload", (e) => { if (saveTimer) e.preventDefault(); });

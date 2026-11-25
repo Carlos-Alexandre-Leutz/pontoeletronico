@@ -63,6 +63,12 @@
           <li>Você revisa o texto que ela escreveu. Depois da sua aprovação, ela envia para cá e o texto aparece como <strong>pendente</strong>, para você aceitar.</li>
         </ol>
         <p id="ia-status" class="small text-muted mb-2"></p>
+        <div id="ia-erro" class="alert alert-danger small py-2 d-none" role="alert"></div>
+        <div id="ia-confirma" class="alert alert-warning small py-2 d-none" role="alert">
+          Gerar uma nova conexão? A atual deixa de funcionar na sua IA.
+          <button id="btn-confirmar-conexao" class="btn btn-sm btn-warning ms-2">Sim, gerar nova</button>
+          <button id="btn-cancelar-conexao" class="btn btn-sm btn-outline-secondary">Cancelar</button>
+        </div>
         <button id="btn-gerar-conexao" class="btn btn-sm btn-primary">Gerar conexão</button>
 
         <div id="ia-prompt-box" class="mt-3 d-none">
